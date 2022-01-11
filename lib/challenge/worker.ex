@@ -23,7 +23,7 @@ defmodule Challenge.Worker do
   catch
     _, err ->
       Logger.debug(
-        "New error when try to extract numbers from external api" <>
+        "New error when try to extract numbers from external api, " <>
           "reason: #{Exception.format(:error, err, __STACKTRACE__)}."
       )
 
