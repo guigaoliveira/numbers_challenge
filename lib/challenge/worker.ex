@@ -30,7 +30,7 @@ defmodule Challenge.Worker do
       new_attempt = attempt + 1
       delay = back_off(new_attempt, config(:retry_delay) || @default_retry_daily)
 
-      Logger.debug("Retrying to extract numbers. Attempt #{attempt} with delay #{delay}.")
+      Logger.debug("Retrying to extract numbers. Attempt #{new_attempt} with delay #{delay}.")
 
       perform(window, new_attempt, config(:max_retries) || @default_max_retries)
   end
