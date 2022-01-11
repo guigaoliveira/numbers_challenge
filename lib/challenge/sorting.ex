@@ -3,8 +3,8 @@ defmodule Challenge.Sorting do
   Implements sorting algoritms
   """
 
-  defp merge([], list2, _), do: list2
-  defp merge(list1, [], _), do: list1
+  defp merge([], list, _), do: list
+  defp merge(list, [], _), do: list
 
   defp merge([head1 | tail1] = list1, [head2 | tail2] = list2, fun) do
     if fun.(head1, head2) do

@@ -16,13 +16,13 @@ defmodule Challenge.Cache do
   def fetch(key, fallback \\ nil, opts \\ []) when is_nil(fallback) or is_function(fallback, 0) do
     Cache.transaction(fn ->
       case Cache.get(key) do
-        nil when not is_nil(fallback) ->
-          result = fallback.()
-          Cache.put(key, result, opts)
-          result
+        nil when is_function(fallback, 0) ->
+          value = fallback.()
+          Cache.put(key, value, opts)
+          value
 
-        result ->
-          result
+        value ->
+          value
       end
     end)
   end

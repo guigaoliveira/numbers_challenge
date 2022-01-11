@@ -17,8 +17,8 @@ defmodule Challenge.Numbers do
     extracted_numbers = Cache.get(:extracted_numbers)
 
     transform(extracted_numbers, String.to_existing_atom(attrs[:order_by] || "asc"))
-  rescue
-    _ -> nil
+  catch
+    _, _ -> nil
   end
 
   defp transform(nil, _), do: nil

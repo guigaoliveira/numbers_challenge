@@ -6,6 +6,9 @@ defmodule Challenge.Worker do
 
   require Logger
 
+  @default_retry_daily 1000
+  @default_max_retries 5
+
   @spec perform(Range.t() | nil, non_neg_integer) ::
           %{
             attempt: non_neg_integer,
@@ -19,29 +22,26 @@ defmodule Challenge.Worker do
     %{data: extract_numbers(window), attempt: attempt, status: :ok}
   catch
     _, err ->
-      retry_opts = %{
-        max_retries: config(:max_retries) || 5,
-        retry_delay: config(:retry_delay) || 100
-      }
-
       Logger.debug(
-        "New error for attempt #{attempt}, reason: #{Exception.format(:error, err, __STACKTRACE__)}."
+        "New error when try to extract numbers from external api" <>
+          "reason: #{Exception.format(:error, err, __STACKTRACE__)}."
       )
 
       new_attempt = attempt + 1
-      delay = back_off(new_attempt, retry_opts[:retry_delay])
+      delay = back_off(new_attempt, config(:retry_delay) || @default_retry_daily)
 
       Logger.debug("Retrying to extract numbers. Attempt #{attempt} with delay #{delay}.")
 
-      perform(window, new_attempt, retry_opts[:max_retries])
+      perform(window, new_attempt, config(:max_retries) || @default_max_retries)
   end
 
-  defp perform(_, attempt, max_retries) when is_integer(attempt) and attempt >= max_retries,
-    do: %{data: [], attempt: attempt, status: :ignore}
+  defp perform(_, attempt, max_retries) when attempt >= max_retries do
+    %{data: [], attempt: attempt, status: :ignore}
+  end
 
-  defp perform(window, attempt, max_retries)
-       when is_integer(attempt) and attempt < max_retries,
-       do: perform(window, attempt)
+  defp perform(window, attempt, max_retries) when attempt < max_retries do
+    perform(window, attempt)
+  end
 
   defp back_off(attempt, retry_delay) do
     delay = Integer.pow(2, attempt) * retry_delay
@@ -52,26 +52,24 @@ defmodule Challenge.Worker do
   defp extract_numbers(window) do
     client = HTTPClient.new(url: "http://challenge.dienekes.com.br", compression: "gzip")
 
-    numbers =
+    extracted_numbers =
       client
       |> make_requests(window)
       |> tasks_results_to_list()
 
-    Cache.put(:extracted_numbers, numbers)
-    Cache.put(:updated_at, DateTime.utc_now())
-    numbers
+    Cache.put(:extracted_numbers, extracted_numbers)
+
+    extracted_numbers
   end
 
   # with a fixed window we can make parallel and concurrent requests
-  defp make_requests(client, _min.._max = window) do
+  defp make_requests(client, _first_page.._last_page = window) do
     Challenge.TaskSupervisor
     |> Task.Supervisor.async_stream_nolink(
       window,
-      &request_numbers_by_page(client, &1)
+      fn n -> request_numbers_by_page(client, n) end
     )
-    |> Stream.map(fn {:ok, {:ok, {numbers, _}}} ->
-      numbers
-    end)
+    |> Stream.map(fn {:ok, {:ok, {numbers, _}}} -> numbers end)
   end
 
   # in case the last page is not known
@@ -80,11 +78,8 @@ defmodule Challenge.Worker do
     |> request_numbers_by_page(1)
     |> Stream.iterate(fn {_, {_, page}} -> request_numbers_by_page(client, page + 1) end)
     |> Stream.take_while(fn
-      {:ok, {list, _}} when list != [] ->
-        true
-
-      {:ok, {[], _}} ->
-        false
+      {:ok, {list, _}} when list != [] -> true
+      {:ok, {[], _}} -> false
     end)
     |> Stream.map(fn {:ok, {numbers, _}} -> numbers end)
   end
@@ -96,9 +91,7 @@ defmodule Challenge.Worker do
       Process.sleep(delay_request)
     end
 
-    result = HTTPClient.request(client, url: "/api/numbers", method: :get, query: [page: page])
-
-    case result do
+    case HTTPClient.request(client, url: "/api/numbers", method: :get, query: [page: page]) do
       {:ok, %{body: %{"numbers" => numbers}}} -> {:ok, {numbers, page}}
       {:error, error} -> {:error, error}
     end

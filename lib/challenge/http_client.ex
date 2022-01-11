@@ -79,8 +79,6 @@ defmodule Challenge.HTTPClient do
     |> parse_result()
   end
 
-  defp parse_result(result)
-
   defp parse_result({:ok, %{status: status} = env}) when is_success(status) do
     {:ok, %{body: env.body, headers: env.headers, status: status}}
   end
