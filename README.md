@@ -2,12 +2,8 @@
 
 To run this project you need: 
 
-* Docker
-* Docker-ompose
 * Erlang 
 * Elixir
-
-After having these tools installed, we need to all docker containers, in the project folder run: `docker-compose up -d`
 
 To start your Phoenix server:
 
