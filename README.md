@@ -12,7 +12,6 @@ After having these tools installed, we need to all docker containers, in the pro
 To start your Phoenix server:
 
 * Install dependencies with `mix deps.get`
-* Create and migrate database with `mix ecto.setup`
 * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
 
 Phoenix server runs in [`localhost:4000`](http://localhost:4000) in development environment.
